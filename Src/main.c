@@ -108,9 +108,9 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
-		uint32_t start = HAL_GetTick();
+		//uint32_t start = HAL_GetTick();
 		LED_displayFrame();
-		printf("%d\r\n", HAL_GetTick() - start);
+		//printf("%d\r\n", HAL_GetTick() - start);
 
   /* USER CODE END WHILE */
 
