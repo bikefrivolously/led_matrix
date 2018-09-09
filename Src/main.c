@@ -101,6 +101,7 @@ int main(void) {
 
 	// turn off the display
 	HAL_GPIO_WritePin(LM_OE_GPIO_Port, LM_OE_Pin, GPIO_PIN_SET);
+	LED_fillBuffer();
 
 	/* USER CODE END 2 */
 

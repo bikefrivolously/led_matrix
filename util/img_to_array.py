@@ -15,13 +15,20 @@ data = list(im.getdata())
 x = 0
 print('{')
 for p in data:
+    r = p[0]
+    g = p[1]
+    b = p[2]
+    
     if bpp < 8:
         colours = 2**bpp
-        p = p // (256 // colours)
+        r = r // (256 // colours)
+        g = g // (256 // colours)
+        b = b // (256 // colours)
     if x % 64 == 0:
         print('    ', end='')
     
-    print('{:#x},'.format(p), end='')
+    #print('{{{:#x}, {:#x}, {:#x}}}, '.format(r, g, b), end='')
+    print(f'{{{r:#x}, {g:#x}, {b:#x}}}, ', end='')
     
     if x % 64 == 63:
         print()
