@@ -36,7 +36,8 @@
 #include "stm32f4xx_it.h"
 
 /* USER CODE BEGIN 0 */
-
+extern DMA_HandleTypeDef   hdma2;
+extern TIM_HandleTypeDef    htim8;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -68,6 +69,11 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
+void DMA2_Stream2_IRQHandler(void) {
+	/* stop clock generation immediately  */
+	  TIM3->CCMR1 = 0x00000000;
 
+	  HAL_DMA_IRQHandler(htim8.hdma[TIM_DMA_ID_CC1]);
+}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

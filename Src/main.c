@@ -50,8 +50,10 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-uint64_t r1, g1, b1, r2, g2, b2;
-uint8_t row;
+TIM_HandleTypeDef htim8;
+DMA_HandleTypeDef hdma2;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -61,11 +63,14 @@ static void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
-
+static void MX_TIM3_Init(void);
+static void MX_DMA2_Init(void);
+static void TransferComplete(DMA_HandleTypeDef *DmaHandle);
+static void TransferError(DMA_HandleTypeDef *DmaHandle);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-
+volatile uint8_t dma_in_progress;
 /* USER CODE END 0 */
 
 /**
@@ -98,7 +103,11 @@ int main(void) {
 	MX_GPIO_Init();
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
+	MX_TIM3_Init();
+	MX_DMA2_Init();
 
+	htim8.hdma[TIM_DMA_ID_CC1]->XferCpltCallback = TransferComplete;
+	htim8.hdma[TIM_DMA_ID_CC1]->XferErrorCallback = TransferError;
 	// turn off the display
 	HAL_GPIO_WritePin(LM_OE_GPIO_Port, LM_OE_Pin, GPIO_PIN_SET);
 	LED_fillBuffer();
@@ -109,7 +118,7 @@ int main(void) {
 	/* USER CODE BEGIN WHILE */
 	while (1) {
 		//uint32_t start = HAL_GetTick();
-		LED_displayFrame();
+		LED_displayFrame_DMA(&htim8, &hdma2);
 		//printf("%d\r\n", HAL_GetTick() - start);
 
   /* USER CODE END WHILE */
@@ -224,7 +233,7 @@ static void MX_GPIO_Init(void) {
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(GPIOC,
 			LM_B1_Pin | LM_G1_Pin | LM_R1_Pin | LM_B2_Pin | LM_G2_Pin
-					| LM_R2_Pin | LM_CLK_Pin, GPIO_PIN_RESET);
+					| LM_R2_Pin, GPIO_PIN_RESET);
 
 	/*Configure GPIO pin Output Level */
 	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
@@ -243,7 +252,7 @@ static void MX_GPIO_Init(void) {
 	/*Configure GPIO pins : LM_B1_Pin LM_G1_Pin LM_R1_Pin LM_B2_Pin
 	 LM_G2_Pin LM_R2_Pin LM_CLK_Pin */
 	GPIO_InitStruct.Pin = LM_B1_Pin | LM_G1_Pin | LM_R1_Pin | LM_B2_Pin
-			| LM_G2_Pin | LM_R2_Pin | LM_CLK_Pin;
+			| LM_G2_Pin | LM_R2_Pin;
 	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
 	GPIO_InitStruct.Pull = GPIO_NOPULL;
 	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -268,7 +277,61 @@ static void MX_GPIO_Init(void) {
 }
 
 /* USER CODE BEGIN 4 */
+static void MX_TIM3_Init(void) {
+	TIM_OC_InitTypeDef TIM_OC_InitStruct;
 
+	htim8.Instance = TIM8;
+	htim8.Init.Prescaler = TIM8_Prescaler;
+	htim8.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+	htim8.Init.CounterMode = TIM_COUNTERMODE_UP;
+	htim8.Init.Period = TIM8_Period;
+	HAL_TIM_PWM_Init(&htim8);
+
+	TIM_OC_InitStruct.OCMode = TIM_OCMODE_PWM1;
+	TIM_OC_InitStruct.Pulse = TIM8_Pulse;
+	TIM_OC_InitStruct.OCPolarity = TIM_OCPOLARITY_HIGH;
+	TIM_OC_InitStruct.OCFastMode = TIM_OCFAST_DISABLE;
+	HAL_TIM_PWM_ConfigChannel(&htim8, &TIM_OC_InitStruct, TIM_CHANNEL_1);
+}
+
+static void MX_DMA2_Init(void) {
+
+	__HAL_RCC_DMA2_CLK_ENABLE();
+
+	hdma2.Instance = DMA2_Stream2;
+	hdma2.Init.Channel = DMA_CHANNEL_7;
+	hdma2.Init.Direction = DMA_MEMORY_TO_PERIPH;
+	hdma2.Init.PeriphInc = DMA_PINC_DISABLE;
+	hdma2.Init.MemInc = DMA_MINC_ENABLE;
+	hdma2.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+	hdma2.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+	hdma2.Init.Mode = DMA_NORMAL;
+	hdma2.Init.Priority = DMA_PRIORITY_HIGH;
+	hdma2.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
+	HAL_DMA_Init(&hdma2);
+
+	__HAL_LINKDMA(&htim8, hdma[TIM_DMA_ID_CC1], hdma2);
+
+	HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+}
+
+static void TransferComplete(DMA_HandleTypeDef *DmaHandle)
+{
+
+	HAL_TIM_DMADelayPulseCplt(DmaHandle);
+	// latch in the data and turn on display
+	HAL_GPIO_WritePin(LM_LAT_GPIO_Port, LM_LAT_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(LM_OE_GPIO_Port, LM_OE_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LM_LAT_GPIO_Port, LM_LAT_Pin, GPIO_PIN_RESET);
+	dma_in_progress = 0;
+
+}
+
+static void TransferError(DMA_HandleTypeDef *DmaHandle) {
+	_Error_Handler(__FILE__, __LINE__);
+}
 /* USER CODE END 4 */
 
 /**
@@ -280,6 +343,7 @@ static void MX_GPIO_Init(void) {
 void _Error_Handler(char *file, int line) {
 	/* USER CODE BEGIN Error_Handler_Debug */
 	/* User can add his own implementation to report the HAL error return state */
+	printf("Error: %s, %d\r\n", file, line);
 	while (1) {
 	}
 	/* USER CODE END Error_Handler_Debug */

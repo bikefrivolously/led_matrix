@@ -44,7 +44,9 @@
 /* Includes ------------------------------------------------------------------*/
 
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
 
+extern volatile uint8_t dma_in_progress;
 /* USER CODE END Includes */
 
 /* Private define ------------------------------------------------------------*/
@@ -98,6 +100,23 @@
 /* #define USE_FULL_ASSERT    1U */
 
 /* USER CODE BEGIN Private defines */
+#define TIM8_Pin GPIO_PIN_6
+#define TIM8_Port GPIOC
+
+/* With APB2 CLK @ 90MHz and TIMPRE=0, TIM8 CLK is 180MHz
+ * Prescaler of 17999, Period of 9 gives 1kHZ PWM
+ * Pulse defines duty cycle (5 is 50%)
+ */
+//#define TIM8_Prescaler 17999
+//#define TIM8_Period 9
+//#define TIM8_Pulse TIM8_Period - (TIM8_Period - 5)
+
+#define TIM8_Prescaler 9
+#define TIM8_Period 9
+#define TIM8_Pulse TIM8_Period - (TIM8_Period - 5)
+
+
+
 
 /* USER CODE END Private defines */
 

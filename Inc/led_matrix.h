@@ -9,6 +9,7 @@
 #define LED_MATRIX_H_
 
 #include <stdint.h>
+#include "stm32f4xx_hal.h"
 
 struct RGB {
 	uint8_t R;
@@ -30,5 +31,6 @@ typedef struct RGB RGB_t;
 
 void LED_fillBuffer(void);
 void LED_displayFrame(void);
+void LED_displayFrame_DMA(TIM_HandleTypeDef *tim, DMA_HandleTypeDef *dma);
 
 #endif /* LED_MATRIX_H_ */

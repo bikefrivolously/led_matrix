@@ -4,7 +4,7 @@
  *  Created on: Sep 6, 2018
  *      Author: dmartins
  */
-
+#include "main.h"
 #include "led_matrix.h"
 
 #include <stdio.h>
@@ -134,4 +134,33 @@ void LED_displayFrame(void) {
 			}
 		}
 	}
+}
+
+void LED_displayFrame_DMA(TIM_HandleTypeDef *tim, DMA_HandleTypeDef *dma) {
+	uint32_t i = 0;
+	uint8_t *src = buffer;
+
+	__HAL_TIM_ENABLE_DMA(tim, TIM_DMA_CC1);
+		for(uint8_t row = 0; row < SCAN_RATE; row++) {
+
+			HAL_GPIO_WritePin(LM_OE_GPIO_Port, LM_OE_Pin, GPIO_PIN_SET);
+			LL_GPIO_WriteOutputPort(GPIOB, (LL_GPIO_ReadOutputPort(GPIOB) & ~0x1F) | row);
+
+			for(uint8_t bit = 0; bit < BITS_PER_CHANNEL; bit++) {
+				HAL_DMA_Start_IT(dma, (uint32_t)src, (uint32_t)&(GPIOC->ODR), WIDTH);
+				__HAL_DMA_DISABLE_IT(tim->hdma[TIM_DMA_ID_CC1], DMA_IT_HT);
+				__HAL_DMA_DISABLE_IT(tim->hdma[TIM_DMA_ID_CC1], DMA_IT_FE);
+				dma_in_progress = 1;
+				HAL_TIM_PWM_Start(tim, TIM_CHANNEL_1);
+				while(dma_in_progress);
+
+				//HAL_TIM_PWM_Stop(tim, TIM_CHANNEL_1);
+
+				// delay by xxxx * 1<<bit
+				for(uint32_t di = 0; di < 1 * (1<<bit); di++) {
+					asm("nop");
+				}
+				src += WIDTH;
+			}
+		}
 }
