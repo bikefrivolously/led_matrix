@@ -2,7 +2,7 @@
 Driving a 64x64 LED matrix using STM32F4.
 
 This has been developed on a ST Nucleo board. Specifically NUCLEO-F446RE.
-After initially starting off using TrueStudio and the STM32 HAL drivers, the project has been converted to use a Makefile for building and CMSIS headers. The toolchain is gcc-arm. I found I was spending more time than I'd like running into issues with eclipse or trying to dechipher the HAL libraries.
+After initially starting off using TrueStudio and the STM32 HAL drivers, the project has been converted to use a Makefile for building and CMSIS headers. The toolchain is gcc-arm. I found I was spending more time than I'd like running into issues with eclipse or trying to decipher the HAL libraries.
 
 The current code makes use of two timers, DMA, and GPIO to drive the display leaving the CPU relatively free to compute the next frame. With the microcontroller running at it's maximum speed of 180MHz, one frame can be shown on the display in ~1.82ms, giving a refresh rate of a bit over 549Hz. This is easily scaled back to something more reasonable by setting a timer prescaler value. (PRESCALER = 8 will divide the timer clock by 9, giving 61Hz screen updates). Doing so gives more time for the CPU to prepare the next frame and load it in the buffer.
 
