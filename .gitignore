@@ -1,3 +1,3 @@
-Debug
-Release
-test_images/*
+build
+test_images
+.gdb_history
