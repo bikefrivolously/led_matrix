@@ -17,19 +17,10 @@
 
 #define PIXEL(f, x, y) f[y * 64 + x]
 
-extern volatile uint32_t ticks;
 
-inline uint32_t millis(void);
-void delay_ms(uint32_t t);
 void _error_handler(void);
-void TIM5_IRQHandler(void);
-void SysTick_Handler(void);
 
-struct RGB {
-	uint8_t R;
-	uint8_t G;
-	uint8_t B;
-};
-
-typedef struct RGB RGB_t;
-
+extern volatile uint8_t bit;
+extern volatile uint8_t row;
+extern volatile uint8_t busyFlag;
+extern volatile uint32_t frame_count;
