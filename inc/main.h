@@ -13,7 +13,7 @@
 #define HEIGHT 64
 #define SCAN_RATE 32 // this is a 1/32 display
 
-#define BRIGHTNESS 1 // this can be from 1 to 10
+#define BRIGHTNESS 10 // this can be from 1 to 10
 
 #define PIXEL(f, x, y) f[y * 64 + x]
 

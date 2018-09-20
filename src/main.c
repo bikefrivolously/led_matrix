@@ -32,7 +32,7 @@ int main(void) {
         else
             nextBuffer = buffer1;
 
-        LED_plasmaEffect(frame);
+        LED_waveEffect(frame);
     }
     return 0;
 }
@@ -45,11 +45,11 @@ static void init(void) {
     initClock();
     SysTick_Init();
 
-    LED_plasmaEffect(frame);
+    LED_waveEffect(frame);
     LED_fillBuffer(frame, buffer1);
-    LED_plasmaEffect(frame);
+    LED_waveEffect(frame);
     LED_fillBuffer(frame, buffer2);
-    LED_plasmaEffect(frame);
+    LED_waveEffect(frame);
     nextBuffer = buffer1;
 
     // Set up any input/output pins
