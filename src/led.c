@@ -14,10 +14,14 @@ float mapf(float value, float c_min, float c_max, float t_min, float t_max) {
     return (value - c_min) / (c_max - c_min) * (t_max - t_min) + t_min;
 }
 
+float bound(float value, float max, float min) {
+    return fmaxf(fminf(value, max), min);
+}
+
 
 void LED_waveEffect(RGB_t *frame) {
     static float time;
-    float xx, yy, v;
+    float xx;
     uint8_t r, g, b;
 
     if(time > 2*M_PI) {
@@ -25,22 +29,17 @@ void LED_waveEffect(RGB_t *frame) {
     }
 
     for(uint8_t y = 0; y < HEIGHT; y++) {
-        yy = mapf(y, 0, HEIGHT-1, 0, 2*M_PI);
         for(uint8_t x = 0; x < WIDTH; x++) {
             xx = mapf(x, 0, WIDTH-1, 0, 2*M_PI);
-            //v = sinf(xx + time); // between -1 and 1
-            //r = 64 + 180 * sinf(v * M_PI); // sin result is between 0 and 1;
-            //g = 64 + 180 * cosf(v * M_PI);
-            //b = 64;
-            r = 16 + 100 * (sinf(xx + time) + 1);
-            g = 16 + 100 * (sinf(xx + M_PI / 3 + time) + 1);
-            b = 16 + 100 * (sinf(xx + 2 * M_PI / 3 + time) + 1);
+            r = 16 + 100 * (bound(sinf(xx + time + 2*M_PI/3), 0.5, -0.5) + 0.5);
+            g = 16 + 100 * (bound(sinf(xx + time - 2*M_PI/3), 0.5, -0.5) + 0.5);
+            b = 16 + 100 * (bound(sinf(xx + time         ), 0.5, -0.5) + 0.5);
             PIXEL(frame, x, y).R = r;
             PIXEL(frame, x, y).G = g;
             PIXEL(frame, x, y).B = b;
         }
     }
-    time += 0.05;
+    time += 0.1;
 }
 
 void LED_plasmaEffect(RGB_t *frame) {

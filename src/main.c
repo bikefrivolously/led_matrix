@@ -23,16 +23,19 @@ static void initDMA(void);
 
 int main(void) {
     init();
+    uint32_t current_buffer, start_time;
     while(1) {
+        start_time = millis();
+        while(busyFlag);
+        busyFlag = 1;
+        current_buffer = DMA2_Stream2->CR | DMA_SxCR_CT;
+        nextBuffer = current_buffer ? buffer2 : buffer1;
         while(busyFlag);
         busyFlag = 1;
         LED_fillBuffer(frame, nextBuffer);
-        if (nextBuffer == buffer1)
-            nextBuffer = buffer2;
-        else
-            nextBuffer = buffer1;
-
         LED_waveEffect(frame);
+        while(millis() - start_time < 30);
+
     }
     return 0;
 }
@@ -44,13 +47,6 @@ static void init(void) {
     // This will set the clock to 180MHz
     initClock();
     SysTick_Init();
-
-    LED_waveEffect(frame);
-    LED_fillBuffer(frame, buffer1);
-    LED_waveEffect(frame);
-    LED_fillBuffer(frame, buffer2);
-    LED_waveEffect(frame);
-    nextBuffer = buffer1;
 
     // Set up any input/output pins
     initGPIO();
