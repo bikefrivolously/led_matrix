@@ -1,28 +1,19 @@
+#include "main.h"
+
 #include <stdint.h>
-#include <math.h>
 
 #include "stm32f446xx.h"
-#include "system_stm32f4xx.h"
 
-#include "main.h"
-#include "gamma.h"
+#include "systick.h"
+#include "led.h"
 
-
-volatile uint32_t ticks;
 volatile uint8_t bit;
 volatile uint8_t row;
+volatile uint32_t frame_count;
 
 volatile uint8_t busyFlag;
 
-RGB_t frame[WIDTH*HEIGHT];
-uint8_t data1[WIDTH*BITS_PER_CHANNEL*SCAN_RATE];
-uint8_t data2[WIDTH*BITS_PER_CHANNEL*SCAN_RATE];
-uint8_t *buffer1;
-uint8_t *buffer2;
 uint8_t *nextBuffer;
-
-void LED_plasmaFrame(RGB_t *frame);
-void LED_fillBuffer(RGB_t *frame, uint8_t *buffer);
 
 static void init(void);
 static void initClock(void);
@@ -32,16 +23,19 @@ static void initDMA(void);
 
 int main(void) {
     init();
+    uint32_t current_buffer, start_time;
     while(1) {
+        start_time = millis();
         while(busyFlag);
-        LED_fillBuffer(frame, nextBuffer);
-        if (nextBuffer == buffer1)
-            nextBuffer = buffer2;
-        else
-            nextBuffer = buffer1;
-
         busyFlag = 1;
-        LED_plasmaFrame(frame);
+        current_buffer = DMA2_Stream2->CR | DMA_SxCR_CT;
+        nextBuffer = current_buffer ? buffer2 : buffer1;
+        while(busyFlag);
+        busyFlag = 1;
+        LED_fillBuffer(frame, nextBuffer);
+        LED_waveEffect(frame);
+        while(millis() - start_time < 30);
+
     }
     return 0;
 }
@@ -52,19 +46,7 @@ static void init(void) {
     
     // This will set the clock to 180MHz
     initClock();
-
-    // Enable the SysTick interrupt every 1ms
-    SysTick_Config(SystemCoreClock / 1000);
-    NVIC_EnableIRQ(SysTick_IRQn);
-
-    LED_plasmaFrame(frame);
-    buffer1 = data1;
-    buffer2 = data2;
-    LED_fillBuffer(frame, buffer1);
-    LED_plasmaFrame(frame);
-    LED_fillBuffer(frame, buffer2);
-    LED_plasmaFrame(frame);
-    nextBuffer = buffer1;
+    SysTick_Init();
 
     // Set up any input/output pins
     initGPIO();
@@ -73,35 +55,6 @@ static void init(void) {
     DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM8_STOP; 
     initTimers();
     busyFlag = 1;
-}
-
-void LED_plasmaFrame(RGB_t *frame) {
-    static float time;
-    uint8_t r, g, b;
-    float xx, yy;
-    float v;
-
-    time += 0.025;
-
-    for(uint8_t y = 0; y < HEIGHT; y++) {
-        yy = (float)y/HEIGHT - 0.5;
-        for(uint8_t x = 0; x < WIDTH; x++) {
-            xx = (float)x/WIDTH - 0.5;
-            v = sinf(xx*10+time);
-            v += sinf((yy*10+time) / 2.0);
-            v += sinf((xx*10+yy*10+time) / 2.0);
-            float cx = xx + .5 * sinf(time/5.0);
-            float cy = yy + .5 * cosf(time/3.0);
-            v += sinf(sqrtf(100*(cx*cx+cy*cy)+1)+time);
-            v /= 2.0;
-            r = 255 * fabsf(sinf(v * M_PI));
-            g = 255 * fabsf(cosf(v * M_PI));
-            b = 0;
-            PIXEL(frame, x, y).R = r;
-            PIXEL(frame, x, y).G = g;
-            PIXEL(frame, x, y).B = b;
-        }
-    }
 }
 
 static void initGPIO(void) {
@@ -284,69 +237,8 @@ static void initTimers(void) {
     TIM5->CCR2 = 1280 - BRIGHTNESS; // put the first value in CCR2 preload it will be loaded at the first UEV
 }
 
-void LED_fillBuffer(RGB_t *frame, uint8_t *buffer) {
-	uint32_t i = 0, p1, p2;
-	uint8_t bit, mask;
-	for(uint8_t row = 0; row < SCAN_RATE; row++) {
-		p1 = row * WIDTH;
-		p2 = p1 + WIDTH * SCAN_RATE;
-		for(bit = 0; bit < BITS_PER_CHANNEL; bit++) {
-			mask = 1<<bit;
-			for(uint8_t col = 0; col < WIDTH; col++) {
-				buffer[i] =
-					/*((((frame[p2+col].R) & mask) >> bit) << 5) |
-					((((frame[p2+col].G) & mask) >> bit) << 4) |
-					((((frame[p2+col].B) & mask) >> bit) << 3) |
-					((((frame[p1+col].R) & mask) >> bit) << 2) |
-					((((frame[p1+col].G) & mask) >> bit) << 1) |
-					((((frame[p1+col].B) & mask) >> bit) << 0);*/
-					((gammaR[frame[p2+col].R] & mask) ? 1 : 0) << 5 |
-					((gammaG[frame[p2+col].G] & mask) ? 1 : 0) << 4 |
-					((gammaB[frame[p2+col].B] & mask) ? 1 : 0) << 3 |
-					((gammaR[frame[p1+col].R] & mask) ? 1 : 0) << 2 |
-					((gammaG[frame[p1+col].G] & mask) ? 1 : 0) << 1 |
-					((gammaB[frame[p1+col].B] & mask) ? 1 : 0) << 0;
-
-				i++;
-			}
-		}
-	}
-}
-
-inline uint32_t millis(void) {
-  return ticks;
-}
-
-void delay_ms(uint32_t t) {
-  uint32_t elapsed;
-  uint32_t start = millis();
-  do {
-    elapsed = millis() - start;
-  } while (elapsed < t) ;
-}
 
 void _error_handler(void) {
     while(1);
 }
 
-void TIM5_IRQHandler(void) {
-    TIM5->SR &= ~TIM_SR_UIF_Msk;
-    if(bit == 0) {
-        GPIOB->ODR = (GPIOB->ODR & ~(row_mask)) | row;
-        row++;
-        row &= row_mask;
-    }
-    bit++;
-    bit &=  0x7;
-    TIM5->CCR2 = 1280 - (BRIGHTNESS * (1 << bit));
-}
-
-void DMA2_Stream2_IRQHandler(void) {
-    busyFlag = 0;
-    DMA2->LIFCR |= DMA_LIFCR_CTCIF2; // make sure the interrupt flag is clear
-}
-
-// The SysTick interrupt handler
-void SysTick_Handler(void) {
-    ticks++;
-}
