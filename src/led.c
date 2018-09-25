@@ -66,9 +66,9 @@ void LED_plasmaEffect(RGB_t *frame) {
             float cy = yy + .5 * cosf(time/3.0);
             v += sinf(sqrtf((cx*cx+cy*cy)+1)+time);
             v /= 2.0;
-            r = 255 * fabsf(sinf(v * M_PI));
-            g = 255 * fabsf(cosf(v * M_PI));
-            b = 0;
+            r = 255 * (sinf(v * M_PI) + 1) / 2;
+            g = 255 * (cosf(v * M_PI) + 1) / 2;
+            b = 128 * (sinf(v * M_PI + 2*M_PI/3) + 1) / 2;
             PIXEL(frame, x, y).R = r;
             PIXEL(frame, x, y).G = g;
             PIXEL(frame, x, y).B = b;
