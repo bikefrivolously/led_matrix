@@ -1,0 +1,6 @@
+-DSTM32F446xx
+-DHSE_VALUE=8000000
+-Iinc
+-Idrivers/cmsis/ST/Include
+-Idrivers/cmsis/Include
+
