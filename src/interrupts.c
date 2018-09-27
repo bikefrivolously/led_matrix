@@ -1,5 +1,6 @@
 #include "stm32f446xx.h"
 #include "main.h"
+#include "led.h"
 
 void TIM5_IRQHandler(void) {
     /* Clear the interrupt flag right away.
@@ -24,3 +25,36 @@ void DMA2_Stream2_IRQHandler(void) {
     busyFlag = 0; // main loop watches this flag to know when to fill up the next buffer
 }
 
+void USART2_IRQHandler(void) {
+//    volatile uint8_t val;
+ //   val = USART2->DR;
+    USART2->SR = 0;
+    uart_buffer[uart_counter] = USART2->DR;
+    uart_counter++;
+    if(uart_counter >= WIDTH*HEIGHT*3) {
+        uart_counter = 0;
+        uart_frame_rx = 1;
+    }
+    /*switch(uart_colour) {
+        case 0:
+            frame[uart_counter].R = val;
+            uart_colour++;
+            break;
+        case 1:
+            frame[uart_counter].G = val;
+            uart_colour++;
+            break;
+        case 2:
+            frame[uart_counter].B = val;
+            uart_colour++;
+            break;
+        default:
+            uart_colour = 0;
+            uart_counter++;
+    }
+    if(uart_counter >= WIDTH*HEIGHT) {
+        uart_counter = 0;
+        uart_colour = 0;
+        uart_frame_rx = 1;
+    }*/
+}

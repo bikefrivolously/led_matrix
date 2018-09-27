@@ -11,6 +11,11 @@ volatile uint8_t bit;
 volatile uint8_t row;
 volatile uint32_t frame_count;
 
+volatile uint32_t uart_counter;
+volatile uint8_t uart_colour;
+volatile uint8_t uart_frame_rx;
+volatile uint8_t uart_buffer[WIDTH*HEIGHT*3];
+
 volatile uint8_t busyFlag;
 
 uint8_t *nextBuffer;
@@ -20,21 +25,31 @@ static void initClock(void);
 static void initGPIO(void);
 static void initTimers(void);
 static void initDMA(void);
+static void initUART(void);
 
 int main(void) {
     init();
     uint32_t current_buffer, start_time;
     while(1) {
-        start_time = millis();
+//        start_time = millis();
+        while(!uart_frame_rx); // wait for a frame to be recieved
+        uart_frame_rx = 0;
+        for(uint32_t i = 0, j = 0; i < WIDTH*HEIGHT*3; i+= 3, j++) {
+           frame[j].R = uart_buffer[i];
+           frame[j].G = uart_buffer[i+1];
+           frame[j].B = uart_buffer[i+2];
+        }
+        // refresh sync
         while(busyFlag);
         busyFlag = 1;
         current_buffer = DMA2_Stream2->CR | DMA_SxCR_CT;
         nextBuffer = current_buffer ? buffer2 : buffer1;
         while(busyFlag);
         busyFlag = 1;
+        //put the frame in the buffer
         LED_fillBuffer(frame, nextBuffer);
-        LED_waveEffect(frame);
-        while(millis() - start_time < 30);
+//        LED_waveEffect(frame);
+//        while(millis() - start_time < 30);
 
     }
     return 0;
@@ -51,10 +66,14 @@ static void init(void) {
     // Set up any input/output pins
     initGPIO();
     initDMA();
+    initUART();
     DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_TIM5_STOP;
     DBGMCU->APB2FZ |= DBGMCU_APB2_FZ_DBG_TIM8_STOP; 
     initTimers();
     busyFlag = 1;
+    uart_counter = 0;
+    uart_colour = 0;
+    uart_frame_rx = 0;
 }
 
 static void initGPIO(void) {
@@ -237,6 +256,22 @@ static void initTimers(void) {
     TIM5->CCR2 = 1280 - BRIGHTNESS; // put the first value in CCR2 preload it will be loaded at the first UEV
 }
 
+
+static void initUART(void) {
+    // Use USART2 as it is connected to the ST-LINK virtual COM on the Nucleo board
+    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+    //Pins PA2 (TX) and PA3 (RX) - AF7
+    GPIOA->MODER |= GPIO_MODER_MODE2_1 | GPIO_MODER_MODE3_1;
+    GPIOA->AFR[0] |= (0x7U << GPIO_AFRL_AFSEL2_Pos) | (0x7U << GPIO_AFRL_AFSEL3_Pos);
+
+    USART2->CR1 |= USART_CR1_UE;
+    // 921600 baud when OVER8=0 and APB1 Clk = 45MHz
+    USART2->BRR = (3 << USART_BRR_DIV_Mantissa_Pos) | (1 << USART_BRR_DIV_Fraction_Pos);
+    
+    // Enable the reciever and reciever interrupt
+    USART2->CR1 |= USART_CR1_RE | USART_CR1_RXNEIE;
+    NVIC_EnableIRQ(USART2_IRQn);
+}
 
 void _error_handler(void) {
     while(1);

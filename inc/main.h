@@ -24,3 +24,7 @@ extern volatile uint8_t bit;
 extern volatile uint8_t row;
 extern volatile uint8_t busyFlag;
 extern volatile uint32_t frame_count;
+extern volatile uint32_t uart_counter;
+extern volatile uint8_t uart_colour;
+extern volatile uint8_t uart_frame_rx;
+extern volatile uint8_t uart_buffer[];
