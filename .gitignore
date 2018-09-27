@@ -1,4 +1,5 @@
 build
+test_videos
 test_images
 .gdb_history
 test
