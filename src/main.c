@@ -11,6 +11,7 @@ volatile uint8_t bit;
 volatile uint8_t row;
 volatile uint32_t frame_count;
 
+
 volatile uint32_t uart_counter;
 volatile uint8_t uart_colour;
 volatile uint8_t uart_frame_rx;
